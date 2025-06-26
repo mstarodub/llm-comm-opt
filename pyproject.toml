@@ -1,0 +1,19 @@
+[project]
+name = "llm-comm-opt"
+version = "0.1.0"
+requires-python = ">=3.12"
+# flash-attn trl[quantization] unsloth
+dependencies = [
+    "accelerate>=1.8.1",
+    "datasets>=3.6.0",
+    "numpy>=2.3.1",
+    "peft>=0.15.2",
+    "torch>=2.6.0",
+    "transformers[torch]>=4.52.4",
+    "trl>=0.19.0",
+    "wandb>=0.20.1",
+]
+[tool.ruff]
+indent-width = 2
+format.quote-style = "single"
+ignore = ["E731"]
