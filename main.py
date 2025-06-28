@@ -1,30 +1,36 @@
 import os
 import random
 
-# import wandb
+# from unsloth import FastLanguageModel
+import torch
 from trl import GRPOConfig, GRPOTrainer
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from util import timeit
 from datasets import Dataset
+import wandb
+
+from util import timeit
 
 
 @timeit
 def load_model():
-  device = 'cpu'
+  device = 'auto'
   # maybe we have to use a base model here? Qwen/Qwen3-0.6B-Base
   # "If you’re using a base model, ensure you have a chat template"
   # but it generates chinese text...
+  # qwen has endoftext as pad token
   model_id = 'Qwen/Qwen3-0.6B'
+  # FastLanguageModel has issues with my custom reward function.
+  # seems to require a "labels" key in the dataset
   # model_id = 'unsloth/Qwen3-0.6B-unsloth-bnb-4bit'
-  # from unsloth import FastLanguageModel
   # model, tokenizer = FastLanguageModel.from_pretrained(
   #   model_name=model_id,
-  #   dtype=None,
-  #   load_in_4bit=True,
+  #   fast_inference=True,
+  #   dtype=torch.bfloat16,
+  #   load_in_4bit=False,
+  #   # TODO: figure out lora
+  #   full_finetuning = True
   # )
-  # TODO: also use vllm? unsloth interaction/grpo_config
 
-  # qwen has endoftext as pad token
   tokenizer = AutoTokenizer.from_pretrained(model_id, padding_side='left')
   model = AutoModelForCausalLM.from_pretrained(
     model_id,
@@ -138,23 +144,23 @@ def game_turn(model, tokenizer):
 
 def main():
   os.environ['WANDB_PROJECT'] = 'llm-comm-opt'
-  # wandb.init()
+  wandb.init()
   model, tokenizer = load_model()
   grpo_config = GRPOConfig(
     # KL to reference model
     beta=0,
+    # this barely works, requires accelerate, which is pain
+    # use_vllm=True,
+    # vllm_mode="colocate",
     output_dir=None,
     num_generations=4,
-    # False
-    use_cpu=True,
-    # "wandb"
-    report_to=None,
+    report_to="wandb",
     # log every
-    logging_steps=1,
+    logging_steps=5,
     log_completions=True,
-    max_steps=100,
+    max_steps=5000,
     # default 8
-    per_device_train_batch_size=4,
+    per_device_train_batch_size=128,
     # question-level difficulty bias
     scale_rewards=False,
   )
@@ -165,13 +171,13 @@ def main():
   grpo_trainer = GRPOTrainer(
     model=model,
     processing_class=tokenizer,
-    train_dataset=mk_dataset(10, tokenizer, sys_prompt),
+    train_dataset=mk_dataset(5_000, tokenizer, sys_prompt),
     reward_funcs=reward_func,
     args=grpo_config,
   )
   grpo_trainer.train()
 
 
-model, tokenizer = load_model()
-game_turn(model, tokenizer)
-# main()
+# model, tokenizer = load_model()
+# game_turn(model, tokenizer)
+main()
