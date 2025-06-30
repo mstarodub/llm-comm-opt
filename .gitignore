@@ -15,3 +15,4 @@ unsloth*/
 slurm-*
 checkpoints/
 trainer_output/
+media/
