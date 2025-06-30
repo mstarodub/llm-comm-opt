@@ -152,15 +152,15 @@ def main():
     # this barely works, requires accelerate, which is pain
     # use_vllm=True,
     # vllm_mode="colocate",
-    output_dir=None,
+    output_dir="checkpoints",
     num_generations=4,
     report_to="wandb",
     # log every
     logging_steps=5,
     log_completions=True,
-    max_steps=5000,
+    max_steps=1_000,
     # default 8
-    per_device_train_batch_size=128,
+    per_device_train_batch_size=32,
     # question-level difficulty bias
     scale_rewards=False,
   )

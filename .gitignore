@@ -13,3 +13,5 @@ wheels/
 wandb/
 unsloth*/
 slurm-*
+checkpoints/
+trainer_output/
