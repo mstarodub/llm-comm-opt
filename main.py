@@ -149,9 +149,6 @@ def main():
   grpo_config = GRPOConfig(
     # KL to reference model
     beta=0,
-    # this barely works, requires accelerate, which is pain
-    # use_vllm=True,
-    # vllm_mode="colocate",
     output_dir="checkpoints",
     num_generations=4,
     report_to="wandb",
