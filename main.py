@@ -1,35 +1,17 @@
 import os
 import random
-
-# from unsloth import FastLanguageModel
 import torch
 from trl import GRPOConfig, GRPOTrainer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from datasets import Dataset
 import wandb
 
-from util import timeit
-
-
-@timeit
 def load_model():
   device = 'auto'
   # maybe we have to use a base model here? Qwen/Qwen3-0.6B-Base
-  # "If you’re using a base model, ensure you have a chat template"
   # but it generates chinese text...
   # qwen has endoftext as pad token
   model_id = 'Qwen/Qwen3-0.6B'
-  # FastLanguageModel has issues with my custom reward function.
-  # seems to require a "labels" key in the dataset
-  # model_id = 'unsloth/Qwen3-0.6B-unsloth-bnb-4bit'
-  # model, tokenizer = FastLanguageModel.from_pretrained(
-  #   model_name=model_id,
-  #   fast_inference=True,
-  #   dtype=torch.bfloat16,
-  #   load_in_4bit=False,
-  #   # TODO: figure out lora
-  #   full_finetuning = True
-  # )
 
   tokenizer = AutoTokenizer.from_pretrained(model_id, padding_side='left')
   model = AutoModelForCausalLM.from_pretrained(
@@ -63,7 +45,6 @@ def mk_input(model, tokenizer, sys_prompt, prompt):
   return tokenized
 
 
-@timeit
 def inference(model, tokenizer, input):
   max_new_tokens = 2048
   # TODO: do_sample=True ?
