@@ -144,7 +144,7 @@ def game_turn(model, tokenizer):
 
 def main():
   os.environ['WANDB_PROJECT'] = 'llm-comm-opt'
-  wandb.init()
+  wandb.init(config={"slurm_job_id": os.environ.get("SLURM_JOB_ID")})
   model, tokenizer = load_model()
   grpo_config = GRPOConfig(
     # KL to reference model
