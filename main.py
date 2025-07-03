@@ -1,6 +1,7 @@
 import os
 import random
 import torch
+os.environ["HF_HOME"] = os.path.abspath("./hf_cache")
 from peft import LoraConfig, TaskType, get_peft_model
 from trl import GRPOConfig, GRPOTrainer
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -9,12 +10,13 @@ import wandb
 
 def load_model():
   device = 'auto'
-  # maybe we have to use a base model here? Qwen/Qwen3-0.6B-Base
+  # maybe we have to use a base model here?
+  # (eg. Qwen/Qwen3-0.6B-Base)
   # but it generates chinese text...
-  # qwen has endoftext as pad token
-  model_id = 'Qwen/Qwen3-0.6B'
+  # model_id = 'Qwen/Qwen3-0.6B'
   model_id = 'Qwen/Qwen3-8B'
 
+  # qwen has endoftext as pad token
   tokenizer = AutoTokenizer.from_pretrained(model_id, padding_side='left')
   model = AutoModelForCausalLM.from_pretrained(
     model_id,

@@ -16,3 +16,4 @@ slurm-*
 checkpoints/
 trainer_output/
 media/
+hf_cache/
