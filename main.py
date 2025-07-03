@@ -12,6 +12,7 @@ def load_model():
   # but it generates chinese text...
   # qwen has endoftext as pad token
   model_id = 'Qwen/Qwen3-0.6B'
+  model_id = 'Qwen/Qwen3-8B'
 
   tokenizer = AutoTokenizer.from_pretrained(model_id, padding_side='left')
   model = AutoModelForCausalLM.from_pretrained(
@@ -103,25 +104,6 @@ def mk_dataset(n_samples, tokenizer, sender_sys_prompt):
 
   return Dataset.from_dict({'prompt': prompts, 'number': numbers})
 
-def game_turn(model, tokenizer):
-  number = 42
-
-  sys_prompt = 'you are an AI agent performing tasks the user asks you to do'
-  sender_prompt = f'describe the number {number}'
-  # sender_prompt = f'the number is {number}'
-  # sender_sys_prompt = 'you are a sender agent. your goal is to describe a number.'
-  sender_input = mk_input(model, tokenizer, sys_prompt, sender_prompt)
-  sender_msg = inference(model, tokenizer, sender_input)
-  print('SENDER MSG', sender_msg)
-
-  recv_prompt = f'state the number from the following description: {sender_msg}'
-  # recv_prompt = f'the sender sent the message: {sender_msg}'
-  # recv_sys_prompt = 'you are a receiver agent. your partner, the sender, has sent a message describing a number. your goal is to state the number.'
-  recv_input = mk_input(model, tokenizer, sys_prompt, recv_prompt)
-  recv_msg = inference(model, tokenizer, recv_input)
-  print('RECV MSG', recv_msg)
-  print('PARSED', parse_recv_msg(recv_msg))
-
 
 def main():
   os.environ['WANDB_PROJECT'] = 'llm-comm-opt'
@@ -157,5 +139,4 @@ def main():
 
 
 # model, tokenizer = load_model()
-# game_turn(model, tokenizer)
 main()
