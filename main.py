@@ -1,6 +1,7 @@
 import os
 import random
 import torch
+from peft import LoraConfig, TaskType, get_peft_model
 from trl import GRPOConfig, GRPOTrainer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from datasets import Dataset
@@ -20,6 +21,25 @@ def load_model():
     torch_dtype='auto',
     device_map=device,
   )
+
+  lora_rank = 256
+  lora_config = LoraConfig(
+    r=lora_rank,
+    lora_alpha=2*lora_rank,
+    lora_dropout=0.05,
+    task_type=TaskType.CAUSAL_LM,
+    target_modules=[
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj",
+    ],
+  )
+  model = get_peft_model(model, lora_config)
+
   return model, tokenizer
 
 def mk_prompt(sys_prompt, prompt):
