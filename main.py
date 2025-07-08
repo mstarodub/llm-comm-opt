@@ -132,6 +132,9 @@ def mk_dataset(n_samples, tokenizer, sender_sys_prompt):
 
 def main():
   os.environ['WANDB_PROJECT'] = 'llm-comm-opt'
+  os.environ['WANDB_ARTIFACT_DIR'] = os.path.abspath("./.wandb_artifacts")
+  os.environ['WANDB_CACHE_DIR'] = os.path.abspath("./.wandb_cache")
+  os.environ['WANDB_DATA_DIR'] = os.path.abspath("./.wandb_data")
   wandb.init(config={"slurm_job_id": os.environ.get("SLURM_JOB_ID")})
   model, tokenizer = load_model()
   grpo_config = GRPOConfig(
@@ -144,6 +147,7 @@ def main():
     logging_steps=5,
     log_completions=True,
     max_steps=1_000,
+    save_steps=100,
     # default 8
     per_device_train_batch_size=32,
     # question-level difficulty bias
