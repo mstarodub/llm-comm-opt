@@ -55,7 +55,6 @@ def mk_prompt(sys_prompt, prompt):
 
 def mk_input(model, tokenizer, sys_prompt, prompt):
   full_prompt = mk_prompt(sys_prompt, prompt)
-  print(f'{full_prompt=}')
   chat = tokenizer.apply_chat_template(
     full_prompt,
     tokenize=False,
@@ -63,7 +62,6 @@ def mk_input(model, tokenizer, sys_prompt, prompt):
     add_generation_prompt=True,
     enable_thinking=False,
   )
-  print(f'{chat=}')
   tokenized = tokenizer([chat], padding=True, return_tensors='pt').to(model.device)
   return tokenized
 
@@ -89,14 +87,11 @@ def parse_recv_msg(msg):
 
 # this custom reward function will be called with whatever columns are in the dataset as kwargs
 def rewards(model, tokenizer, recv_sys_prompt, completions, number, **kwargs):
-  print(f"called rewards, got: {completions=}, {number=}")
   res = []
   for comp, num in zip(completions, number):
     recv_prompt = f'state the number from the following description: {comp}'
     recv_input = mk_input(model, tokenizer, recv_sys_prompt, recv_prompt)
-    print("before recv")
     recv_msg = inference(model, tokenizer, recv_input)
-    print("after recv")
     decoded_num = parse_recv_msg(recv_msg)
 
     reward = 0
@@ -104,7 +99,6 @@ def rewards(model, tokenizer, recv_sys_prompt, completions, number, **kwargs):
       reward += 10
     reward -= 0.1 * len(tokenizer(comp).input_ids)
     res.append(reward)
-  print(f"done computing reward {res=}")
   return res
 
 def gen_numbers(n_samples):
