@@ -107,6 +107,16 @@ def rewards(model, tokenizer, recv_sys_prompt, completions, number, **kwargs):
   print(f"done computing reward {res=}")
   return res
 
+def gen_numbers(n_samples):
+  from collections import Counter
+  from itertools import count, islice
+  def has_repeats(n, r):
+    return any(v >= r for v in Counter(str(n)).values())
+  min_repeats = 4
+  lower, upper = 100_000, 100_000_000
+  gen = (random.randint(lower, upper) for _ in count())
+  filtered = (n for n in gen if has_repeats(n, min_repeats))
+  return list(islice(filtered, n_samples))
 
 def mk_dataset(n_samples, tokenizer, sender_sys_prompt):
   # sender_prompt = f'the number is {number}'
@@ -115,7 +125,7 @@ def mk_dataset(n_samples, tokenizer, sender_sys_prompt):
   # recv_sys_prompt = 'you are a receiver agent. your partner, the sender, has sent a message describing a number. your goal is to state the number.'
 
   prompt = lambda n: f'describe the number {n}'
-  numbers = [random.randint(1, 100) for _ in range(n_samples)]
+  numbers = [random.randint(100_000, 100_000_000) for _ in range(n_samples)]
   # grpo trainer handles this correctly via maybe_apply_chat_template
   prompts = [tokenizer.apply_chat_template(
       mk_prompt(sender_sys_prompt, prompt(n)),
@@ -160,5 +170,4 @@ def main():
   grpo_trainer.train()
 
 
-# model, tokenizer = load_model()
 main()
