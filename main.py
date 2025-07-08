@@ -1,10 +1,14 @@
 import os
+from ast import literal_eval
+import subprocess
 import random
 import torch
 os.environ["HF_HOME"] = os.path.abspath("./hf_cache")
 from peft import LoraConfig, TaskType, get_peft_model
 from trl import GRPOConfig, GRPOTrainer
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers.trainer_callback import TrainerCallback
+from transformers.trainer_utils import get_last_checkpoint
 from datasets import Dataset
 import wandb
 
@@ -129,6 +133,42 @@ def mk_dataset(n_samples, tokenizer, sender_sys_prompt):
 
   return Dataset.from_dict({'prompt': prompts, 'number': numbers})
 
+class CustomCheckpointCallback(TrainerCallback):
+  def __init__(self, checkpoint_path):
+    super().__init__()
+    self.commit_hash = get_current_commit()
+    self.commit_map_path, self.commit_map = load_commit_map(checkpoint_path)
+  def on_save(self, args, state, control, **kwargs):
+    if state.is_world_process_zero:
+      checkpoint_step = state.global_step
+      self.commit_map[checkpoint_step] = self.commit_hash
+      with open(self.commit_map_path, 'w') as f:
+        f.write(repr(self.commit_map))
+
+def load_commit_map(checkpoint_path):
+  path = os.path.join(checkpoint_path, 'commit_map.ast')
+  if os.path.exists(path):
+    with open(path) as f:
+      map = literal_eval(f.read())
+  else:
+    map = dict()
+  return path, map
+
+def get_current_commit():
+  return subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+
+
+def should_resume(checkpoint_path):
+  last_checkpoint = get_last_checkpoint(checkpoint_path)
+  if not last_checkpoint:
+    return False
+  basename = os.path.basename(last_checkpoint)
+  try:
+    last_step = int(basename.split('-')[-1])
+  except Exception:
+    return False
+  _, commit_map = load_commit_map(checkpoint_path)
+  return commit_map.get(last_step) == get_current_commit()
 
 def main():
   os.environ['WANDB_PROJECT'] = 'llm-comm-opt'
@@ -136,11 +176,13 @@ def main():
   os.environ['WANDB_CACHE_DIR'] = os.path.abspath("./.wandb_cache")
   os.environ['WANDB_DATA_DIR'] = os.path.abspath("./.wandb_data")
   wandb.init(config={"slurm_job_id": os.environ.get("SLURM_JOB_ID")})
+
+  checkpoint_path = "checkpoints"
   model, tokenizer = load_model()
   grpo_config = GRPOConfig(
     # KL to reference model
     beta=0,
-    output_dir="checkpoints",
+    output_dir=checkpoint_path,
     num_generations=4,
     report_to="wandb",
     # log every
@@ -163,8 +205,9 @@ def main():
     train_dataset=mk_dataset(5_000, tokenizer, sys_prompt),
     reward_funcs=reward_func,
     args=grpo_config,
+    callbacks=[CustomCheckpointCallback(checkpoint_path)]
   )
-  grpo_trainer.train()
+  grpo_trainer.train(resume_from_checkpoint=should_resume(checkpoint_path))
 
 
 main()
