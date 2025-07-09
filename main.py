@@ -134,41 +134,33 @@ def mk_dataset(n_samples, tokenizer, sender_sys_prompt):
   return Dataset.from_dict({'prompt': prompts, 'number': numbers})
 
 class CustomCheckpointCallback(TrainerCallback):
-  def __init__(self, checkpoint_path):
+  def __init__(self):
     super().__init__()
     self.commit_hash = get_current_commit()
-    self.commit_map_path, self.commit_map = load_commit_map(checkpoint_path)
-  def on_save(self, args, state, control, **kwargs):
-    if state.is_world_process_zero:
-      checkpoint_step = state.global_step
-      self.commit_map[checkpoint_step] = self.commit_hash
-      with open(self.commit_map_path, 'w') as f:
-        f.write(repr(self.commit_map))
 
-def load_commit_map(checkpoint_path):
-  path = os.path.join(checkpoint_path, 'commit_map.ast')
-  if os.path.exists(path):
-    with open(path) as f:
-      map = literal_eval(f.read())
-  else:
-    map = dict()
-  return path, map
+  def on_save(self, args, state, control, **kwargs):
+    if state.is_world_process_zer and self.commit_hash:
+      checkpoint_step = state.global_step
+      checkpoint_dir = os.path.join(args.output_dir, f"checkpoint-{state.global_step}")
+      print('saving to:', checkpoint_dir)
+      with open(os.path.join(checkpoint_dir, "git-hash"), 'w') as f:
+        f.write(self.commit_hash)
 
 def get_current_commit():
   return subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
 
-
-def should_resume(checkpoint_path):
-  last_checkpoint = get_last_checkpoint(checkpoint_path)
-  if not last_checkpoint:
+def should_resume(checkpoint_path, override=False):
+  if override:
+    return True
+  last_checkpoint_dir = get_last_checkpoint(checkpoint_path)
+  if not last_checkpoint_dir:
     return False
-  basename = os.path.basename(last_checkpoint)
   try:
-    last_step = int(basename.split('-')[-1])
+    with open(os.path.join(last_checkpoint_dir, "git-hash"), 'r') as f:
+      checkpoint_commit = f.read().strip()
   except Exception:
     return False
-  _, commit_map = load_commit_map(checkpoint_path)
-  return commit_map.get(last_step) == get_current_commit()
+  return checkpoint_commit == get_current_commit()
 
 def main():
   os.environ['WANDB_PROJECT'] = 'llm-comm-opt'
@@ -208,7 +200,7 @@ def main():
     args=grpo_config,
     callbacks=[CustomCheckpointCallback(checkpoint_path)]
   )
-  grpo_trainer.train(resume_from_checkpoint=should_resume(checkpoint_path))
+  grpo_trainer.train(resume_from_checkpoint=should_resume(checkpoint_path, override=True))
 
 
 main()
