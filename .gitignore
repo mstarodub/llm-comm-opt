@@ -14,7 +14,6 @@ wandb/
 unsloth*/
 slurm-*
 checkpoints/
-trainer_output/
 media/
-*hf_cache/
-*wandb_*/
+.hf_cache/
+*wandb*/

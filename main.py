@@ -3,7 +3,7 @@ from ast import literal_eval
 import subprocess
 import random
 import torch
-os.environ["HF_HOME"] = os.path.abspath("./hf_cache")
+os.environ["HF_HOME"] = os.path.abspath("./.hf_cache")
 from peft import LoraConfig, TaskType, get_peft_model
 from trl import GRPOConfig, GRPOTrainer
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -172,6 +172,7 @@ def should_resume(checkpoint_path):
 
 def main():
   os.environ['WANDB_PROJECT'] = 'llm-comm-opt'
+  os.environ['WANDB_DIR'] = os.path.abspath("./.wandb")
   os.environ['WANDB_ARTIFACT_DIR'] = os.path.abspath("./.wandb_artifacts")
   os.environ['WANDB_CACHE_DIR'] = os.path.abspath("./.wandb_cache")
   os.environ['WANDB_DATA_DIR'] = os.path.abspath("./.wandb_data")
