@@ -139,7 +139,7 @@ class CustomCheckpointCallback(TrainerCallback):
     self.commit_hash = get_current_commit()
 
   def on_save(self, args, state, control, **kwargs):
-    if state.is_world_process_zer and self.commit_hash:
+    if state.is_world_process_zero and self.commit_hash:
       checkpoint_step = state.global_step
       checkpoint_dir = os.path.join(args.output_dir, f"checkpoint-{state.global_step}")
       print('saving to:', checkpoint_dir)
@@ -198,7 +198,7 @@ def main():
     train_dataset=mk_dataset(5_000, tokenizer, sys_prompt),
     reward_funcs=reward_func,
     args=grpo_config,
-    callbacks=[CustomCheckpointCallback(checkpoint_path)]
+    callbacks=[CustomCheckpointCallback()]
   )
   grpo_trainer.train(resume_from_checkpoint=should_resume(checkpoint_path, override=True))
 
