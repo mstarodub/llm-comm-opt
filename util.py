@@ -1,3 +1,4 @@
+import subprocess
 import wandb
 from timeit import default_timer as timer
 from functools import wraps

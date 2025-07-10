@@ -1,5 +1,4 @@
 import os
-import subprocess
 import random
 import torch
 os.environ["HF_HOME"] = os.path.abspath("./.hf_cache")
