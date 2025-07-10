@@ -188,6 +188,8 @@ def main():
     per_device_train_batch_size=32,
     # question-level difficulty bias
     scale_rewards=False,
+    top_p=1.0,
+    temperature=1.5,
   )
   sys_prompt = 'you are an AI agent performing tasks the user asks you to do'
   def reward_func(completions, number, **kwargs):
