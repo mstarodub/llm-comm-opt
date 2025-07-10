@@ -1,5 +1,4 @@
 import os
-from ast import literal_eval
 import subprocess
 import random
 import torch
@@ -10,14 +9,11 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.trainer_callback import TrainerCallback
 from transformers.trainer_utils import get_last_checkpoint
 from datasets import Dataset
+from util import get_current_commit, lora_print_trainable_parameters
 import wandb
 
 def load_model():
   device = 'auto'
-  # maybe we have to use a base model here?
-  # (eg. Qwen/Qwen3-0.6B-Base)
-  # but it generates chinese text...
-  # model_id = 'Qwen/Qwen3-0.6B'
   model_id = 'Qwen/Qwen3-8B'
 
   # qwen has endoftext as pad token
@@ -28,7 +24,9 @@ def load_model():
     device_map=device,
   )
 
-  lora_rank = 256
+  # 8B: rank ~ trainable%:
+  # 256 ~ 8%, 1024 ~ 25%, 2048 ~ 40%
+  lora_rank = 2048
   lora_config = LoraConfig(
     r=lora_rank,
     lora_alpha=2*lora_rank,
@@ -45,7 +43,7 @@ def load_model():
     ],
   )
   model = get_peft_model(model, lora_config)
-
+  lora_print_trainable_parameters(model)
   return model, tokenizer
 
 def mk_prompt(sys_prompt, prompt):
@@ -145,9 +143,6 @@ class CustomCheckpointCallback(TrainerCallback):
       print('saving to:', checkpoint_dir)
       with open(os.path.join(checkpoint_dir, "git-hash"), 'w') as f:
         f.write(self.commit_hash)
-
-def get_current_commit():
-  return subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
 
 def should_resume(checkpoint_path, override=False):
   if override:
