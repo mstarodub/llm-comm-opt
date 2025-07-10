@@ -12,7 +12,7 @@ from datasets import Dataset
 from util import get_current_commit, lora_print_trainable_parameters
 import wandb
 
-def load_model():
+def load_model(lora_rank):
   device = 'auto'
   model_id = 'Qwen/Qwen3-8B'
 
@@ -24,25 +24,26 @@ def load_model():
     device_map=device,
   )
 
+  if lora_rank:
+    lora_config = LoraConfig(
+      r=lora_rank,
+      lora_alpha=2*lora_rank,
+      lora_dropout=0.05,
+      task_type=TaskType.CAUSAL_LM,
+      target_modules=[
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj",
+      ],
+    )
+    model = get_peft_model(model, lora_config)
+
   # 8B: rank ~ trainable%:
   # 256 ~ 8%, 1024 ~ 25%, 2048 ~ 40%
-  lora_rank = 2048
-  lora_config = LoraConfig(
-    r=lora_rank,
-    lora_alpha=2*lora_rank,
-    lora_dropout=0.05,
-    task_type=TaskType.CAUSAL_LM,
-    target_modules=[
-      "q_proj",
-      "k_proj",
-      "v_proj",
-      "o_proj",
-      "gate_proj",
-      "up_proj",
-      "down_proj",
-    ],
-  )
-  model = get_peft_model(model, lora_config)
   lora_print_trainable_parameters(model)
   return model, tokenizer
 
@@ -163,10 +164,16 @@ def main():
   os.environ['WANDB_ARTIFACT_DIR'] = os.path.abspath("./.wandb_artifacts")
   os.environ['WANDB_CACHE_DIR'] = os.path.abspath("./.wandb_cache")
   os.environ['WANDB_DATA_DIR'] = os.path.abspath("./.wandb_data")
-  wandb.init(config={"slurm_job_id": os.environ.get("SLURM_JOB_ID")})
+
+  lora_rank = 2048
+
+  wandb.init(config={
+    "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
+    "lora_rank": lora_rank,
+  })
 
   checkpoint_path = "checkpoints"
-  model, tokenizer = load_model()
+  model, tokenizer = load_model(lora_rank)
   grpo_config = GRPOConfig(
     # KL to reference model
     beta=0,
@@ -195,7 +202,7 @@ def main():
     args=grpo_config,
     callbacks=[CustomCheckpointCallback()]
   )
-  grpo_trainer.train(resume_from_checkpoint=should_resume(checkpoint_path, override=True))
+  grpo_trainer.train(resume_from_checkpoint=should_resume(checkpoint_path, override=False))
 
 
 main()
