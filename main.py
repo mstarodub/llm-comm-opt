@@ -159,21 +159,32 @@ def main():
 
   checkpoint_path = "checkpoints"
   model, tokenizer = load_model(lora_rank)
+
+  # for grpo, scale gen count not batch sz
+  generation_count = 16
+  # 32-64 for 4xh100
+  if torch.cuda.device_count() == 4:
+    generation_count = 48
+  # 64-128 for 8xh100
+  if torch.cuda.device_count() == 8:
+    generation_count = 96
+
   grpo_config = GRPOConfig(
     # KL to reference model
     beta=0,
     output_dir=checkpoint_path,
-    num_generations=4,
+    num_generations=generation_count,
     report_to="wandb",
-    # log every
-    logging_steps=5,
+    # log freq
+    logging_steps=1,
     log_completions=True,
     max_steps=1_000,
     save_steps=100,
-    # default 8
-    per_device_train_batch_size=32,
+    # needs to be divisible by num_generations
+    per_device_train_batch_size=generation_count,
     # question-level difficulty bias
     scale_rewards=False,
+    # seems to be getting forcibly reset to 0.95 with qwen3
     top_p=1.0,
     temperature=1.5,
   )
