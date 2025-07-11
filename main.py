@@ -4,7 +4,7 @@ os.environ["HF_HOME"] = os.path.abspath("./.hf_cache")
 from peft import LoraConfig, TaskType, get_peft_model
 from trl import GRPOConfig, GRPOTrainer
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from transformers.trainer_callback import TrainerCallback
+from transformers.trainer_callback import TrainerCallback, ProgressCallback
 from transformers.trainer_utils import get_last_checkpoint
 from util import get_current_commit, lora_print_trainable_parameters
 from number_game import NumberGameExperiment
@@ -44,6 +44,14 @@ def load_model(lora_rank):
   # 256 ~ 8%, 1024 ~ 25%, 2048 ~ 40%
   lora_print_trainable_parameters(model)
   return model, tokenizer
+
+
+# i hate it
+def on_log(self, args, state, control, logs=None, **kwargs):
+  if state.is_local_process_zero and self.training_bar is not None:
+    _ = logs.pop("total_flos", None)
+ProgressCallback.on_log = on_log
+
 
 class CustomCheckpointCallback(TrainerCallback):
   def __init__(self):
@@ -107,7 +115,8 @@ def main():
     report_to="wandb",
     # log freq
     logging_steps=1,
-    log_completions=False,
+    log_completions=True,
+    wandb_log_unique_prompts=True,
     max_steps=1_000,
     save_steps=100,
     # needs to be divisible by num_generations
