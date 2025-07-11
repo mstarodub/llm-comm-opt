@@ -1,8 +1,30 @@
 import subprocess
 import wandb
 from timeit import default_timer as timer
+import random
+from itertools import islice
 from functools import wraps
 
+
+def gen_numbers(n_samples):
+  min_repeats = 15
+  n_digits = 22
+  def gen():
+    while True:
+      d = str(random.randrange(10))
+      p = random.randrange(n_digits - min_repeats + 1)
+      if p == 0 and d == '0':
+        d = str(random.randrange(1, 10))
+      num = [''] * n_digits
+      num[p:p + min_repeats] = [d] * min_repeats
+      for i in range(n_digits):
+        if num[i] == '':
+          if i == 0:
+            num[i] = str(random.randrange(1, 10))
+          else:
+            num[i] = str(random.randrange(10))
+      yield int("".join(num))
+  return list(islice(gen(), n_samples))
 
 def timeit(func):
   @wraps(func)

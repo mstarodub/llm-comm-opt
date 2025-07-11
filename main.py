@@ -1,5 +1,4 @@
 import os
-import random
 import torch
 os.environ["HF_HOME"] = os.path.abspath("./.hf_cache")
 from peft import LoraConfig, TaskType, get_peft_model
@@ -8,7 +7,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.trainer_callback import TrainerCallback
 from transformers.trainer_utils import get_last_checkpoint
 from datasets import Dataset
-from util import get_current_commit, lora_print_trainable_parameters
+from util import get_current_commit, lora_print_trainable_parameters, gen_numbers
 import wandb
 
 def load_model(lora_rank):
@@ -103,16 +102,6 @@ def rewards(model, tokenizer, recv_sys_prompt, completions, number, **kwargs):
     res.append(reward)
   return res
 
-def gen_numbers(n_samples):
-  from itertools import count, islice
-  def has_repeats(n, r):
-    return any(str(v)*r in str(n) for v in range(10))
-  min_repeats = 4
-  lower, upper = 100_000, 100_000_000
-  gen = (random.randint(lower, upper) for _ in count())
-  filtered = (n for n in gen if has_repeats(n, min_repeats))
-  return list(islice(filtered, n_samples))
-
 def mk_dataset(n_samples, tokenizer, sender_sys_prompt):
   # sender_prompt = f'the number is {number}'
   # sender_sys_prompt = 'you are a sender agent. your goal is to describe a number.'
@@ -155,7 +144,9 @@ def should_resume(checkpoint_path, override=False):
       checkpoint_commit = f.read().strip()
   except Exception:
     return False
-  return checkpoint_commit == get_current_commit()
+  resuming = checkpoint_commit == get_current_commit()
+  print(f"resuming from {last_checkpoint_dir}" if resuming else "not resuming")
+  return resuming
 
 def main():
   os.environ['WANDB_PROJECT'] = 'llm-comm-opt'
