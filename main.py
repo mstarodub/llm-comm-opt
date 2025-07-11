@@ -7,7 +7,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.trainer_callback import TrainerCallback, ProgressCallback
 from transformers.trainer_utils import get_last_checkpoint
 from util import get_current_commit, lora_print_trainable_parameters
-from number_game import NumberGameExperiment
+from number_game import NumbersgameExperiment, BinaryNumbersgameExperiment
 import wandb
 
 def load_model(lora_rank):
@@ -128,7 +128,7 @@ def main():
     temperature=1.5,
   )
 
-  experiment = NumberGameExperiment()
+  experiment = BinaryNumbersgameExperiment()
 
   grpo_trainer = GRPOTrainer(
     model=model,
