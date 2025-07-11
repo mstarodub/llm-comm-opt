@@ -6,8 +6,8 @@ from trl import GRPOConfig, GRPOTrainer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.trainer_callback import TrainerCallback
 from transformers.trainer_utils import get_last_checkpoint
-from datasets import Dataset
-from util import get_current_commit, lora_print_trainable_parameters, gen_numbers
+from util import get_current_commit, lora_print_trainable_parameters
+from number_game import NumberGameExperiment
 import wandb
 
 def load_model(lora_rank):
@@ -44,76 +44,6 @@ def load_model(lora_rank):
   # 256 ~ 8%, 1024 ~ 25%, 2048 ~ 40%
   lora_print_trainable_parameters(model)
   return model, tokenizer
-
-def mk_prompt(sys_prompt, prompt):
-  return [
-    {
-      'role': 'system',
-      'content': sys_prompt,
-    },
-    {'role': 'user', 'content': prompt},
-  ]
-
-def mk_input(model, tokenizer, sys_prompt, prompt):
-  full_prompt = mk_prompt(sys_prompt, prompt)
-  chat = tokenizer.apply_chat_template(
-    full_prompt,
-    tokenize=False,
-    # turn this off and do continue_final_message=True for continuing an assistant message
-    add_generation_prompt=True,
-    enable_thinking=False,
-  )
-  tokenized = tokenizer([chat], padding=True, return_tensors='pt').to(model.device)
-  return tokenized
-
-
-def inference(model, tokenizer, input):
-  max_new_tokens = 2048
-  # TODO: do_sample=True ?
-  generated_ids = model.generate(**input, max_new_tokens=max_new_tokens)
-  # select first and only batch; select everything after input tokens (this has input + output by default)
-  output_ids = generated_ids[0][len(input.input_ids[0]) :]
-
-  content = tokenizer.decode(output_ids, skip_special_tokens=False)
-  return content.strip()
-
-
-def parse_recv_msg(msg):
-  return ''.join(ch for ch in msg if ch.isdigit())
-
-# this custom reward function will be called with whatever columns are in the dataset as kwargs
-def rewards(model, tokenizer, recv_sys_prompt, completions, number, **kwargs):
-  res = []
-  for comp, num in zip(completions, number):
-    recv_prompt = f'state the number from the following description: {comp}'
-    recv_input = mk_input(model, tokenizer, recv_sys_prompt, recv_prompt)
-    recv_msg = inference(model, tokenizer, recv_input)
-    decoded_num = parse_recv_msg(recv_msg)
-
-    reward = 0
-    if decoded_num == num:
-      reward += 10
-    reward -= 0.1 * len(tokenizer(comp).input_ids)
-    res.append(reward)
-  return res
-
-def mk_dataset(n_samples, tokenizer, sender_sys_prompt):
-  # sender_prompt = f'the number is {number}'
-  # sender_sys_prompt = 'you are a sender agent. your goal is to describe a number.'
-  # recv_prompt = f'the sender sent the message: {sender_msg}'
-  # recv_sys_prompt = 'you are a receiver agent. your partner, the sender, has sent a message describing a number. your goal is to state the number.'
-
-  prompt = lambda n: f'describe the number {n}'
-  numbers = gen_numbers(n_samples)
-  # grpo trainer handles this correctly via maybe_apply_chat_template
-  prompts = [tokenizer.apply_chat_template(
-      mk_prompt(sender_sys_prompt, prompt(n)),
-      tokenize=False,
-      add_generation_prompt=True,
-      enable_thinking=False,
-    ) for n in numbers]
-
-  return Dataset.from_dict({'prompt': prompts, 'number': numbers})
 
 class CustomCheckpointCallback(TrainerCallback):
   def __init__(self):
@@ -161,7 +91,7 @@ def main():
   model, tokenizer = load_model(lora_rank)
 
   # for grpo, scale gen count not batch sz
-  generation_count = 16
+  generation_count = 12
   # 32-64 for 4xh100
   if torch.cuda.device_count() == 4:
     generation_count = 48
@@ -177,7 +107,7 @@ def main():
     report_to="wandb",
     # log freq
     logging_steps=1,
-    log_completions=True,
+    log_completions=False,
     max_steps=1_000,
     save_steps=100,
     # needs to be divisible by num_generations
@@ -188,19 +118,19 @@ def main():
     top_p=1.0,
     temperature=1.5,
   )
-  sys_prompt = 'you are an AI agent performing tasks the user asks you to do'
-  def reward_func(completions, number, **kwargs):
-    return rewards(model=model, tokenizer=tokenizer, recv_sys_prompt=sys_prompt, completions=completions, number=number, **kwargs)
+
+  experiment = NumberGameExperiment()
 
   grpo_trainer = GRPOTrainer(
     model=model,
     processing_class=tokenizer,
-    train_dataset=mk_dataset(5_000, tokenizer, sys_prompt),
-    reward_funcs=reward_func,
+    train_dataset=experiment.mk_dataset(5_000, tokenizer),
+    reward_funcs=experiment.mk_reward_func(model, tokenizer),
     args=grpo_config,
     callbacks=[CustomCheckpointCallback()]
   )
   grpo_trainer.train(resume_from_checkpoint=should_resume(checkpoint_path, override=False))
 
 
-main()
+if __name__ == '__main__':
+  main()
