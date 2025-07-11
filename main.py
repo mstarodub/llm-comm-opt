@@ -79,12 +79,7 @@ def inference(model, tokenizer, input):
 
 
 def parse_recv_msg(msg):
-  num_s = ''.join(ch for ch in msg if ch.isdigit())
-  try:
-    res = int(num_s)
-  except ValueError:
-    res = None
-  return res
+  return ''.join(ch for ch in msg if ch.isdigit())
 
 # this custom reward function will be called with whatever columns are in the dataset as kwargs
 def rewards(model, tokenizer, recv_sys_prompt, completions, number, **kwargs):

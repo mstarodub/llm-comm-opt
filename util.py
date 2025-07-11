@@ -23,7 +23,7 @@ def gen_numbers(n_samples):
             num[i] = str(random.randrange(1, 10))
           else:
             num[i] = str(random.randrange(10))
-      yield int("".join(num))
+      yield ''.join(num)
   return list(islice(gen(), n_samples))
 
 def timeit(func):
