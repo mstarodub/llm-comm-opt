@@ -7,8 +7,8 @@ from functools import wraps
 def mk_prompt(sys_prompt, prompt):
   return [
     {
-        'role': 'system',
-        'content': sys_prompt,
+      'role': 'system',
+      'content': sys_prompt,
     },
     {'role': 'user', 'content': prompt},
   ]
@@ -16,12 +16,15 @@ def mk_prompt(sys_prompt, prompt):
 
 def mk_inputs_batch(model, tokenizer, sys_prompt, prompts):
   full_prompts = [mk_prompt(sys_prompt, prompt) for prompt in prompts]
-  chats = [tokenizer.apply_chat_template(
-    full_prompt,
-    tokenize=False,
-    add_generation_prompt=True,
-    enable_thinking=False,
-  ) for full_prompt in full_prompts]
+  chats = [
+    tokenizer.apply_chat_template(
+      full_prompt,
+      tokenize=False,
+      add_generation_prompt=True,
+      enable_thinking=False,
+    )
+    for full_prompt in full_prompts
+  ]
   tokenized = tokenizer(chats, padding=True, return_tensors='pt').to(model.device)
   return tokenized
 
@@ -58,7 +61,9 @@ def download_media(run_id):
 
 
 def get_current_commit():
-  return subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+  return subprocess.run(
+    ['git', 'rev-parse', 'HEAD'], capture_output=True, text=True
+  ).stdout.strip()
 
 
 def lora_print_trainable_parameters(model):
