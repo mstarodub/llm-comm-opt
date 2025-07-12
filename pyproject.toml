@@ -2,7 +2,6 @@
 name = "llm-comm-opt"
 version = "0.1.0"
 requires-python = ">=3.12"
-# flash-attn trl[quantization] unsloth
 dependencies = [
     "accelerate>=1.8.1",
     "datasets>=3.6.0",
