@@ -92,7 +92,6 @@ def should_resume(checkpoint_path, override=False):
 
 def main():
   os.environ['WANDB_PROJECT'] = 'llm-comm-opt'
-  os.environ['WANDB_DIR'] = os.path.abspath('./.wandb')
   os.environ['WANDB_ARTIFACT_DIR'] = os.path.abspath('./.wandb_artifacts')
   os.environ['WANDB_CACHE_DIR'] = os.path.abspath('./.wandb_cache')
   os.environ['WANDB_DATA_DIR'] = os.path.abspath('./.wandb_data')
