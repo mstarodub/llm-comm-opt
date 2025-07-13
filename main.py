@@ -1,4 +1,7 @@
 import os
+from util import select_least_mem_used_gpus
+
+select_least_mem_used_gpus(6)
 import torch
 
 os.environ['HF_HOME'] = os.path.abspath('./.hf_cache')

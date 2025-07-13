@@ -17,4 +17,4 @@ dependencies = [
 [tool.ruff]
 indent-width = 2
 format.quote-style = "single"
-ignore = ["E731"]
+ignore = ["E731", "E402"]

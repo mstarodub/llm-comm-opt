@@ -1,3 +1,4 @@
+import os
 import subprocess
 import wandb
 from timeit import default_timer as timer
@@ -75,6 +76,34 @@ def lora_print_trainable_parameters(model):
   print(
     f'{trainable_params=} | {all_params=} | trainable: {100 * trainable_params / all_params:.3f}%'
   )
+
+
+def select_least_mem_used_gpus(n_gpus):
+  if os.environ.get('SLURM_JOB_ID'):
+    return
+  try:
+    result = subprocess.run(
+      [
+        'nvidia-smi',
+        '--query-gpu=index,memory.total,memory.free,memory.used',
+        '--format=csv,noheader,nounits',
+      ],
+      capture_output=True,
+      text=True,
+      check=True,
+    ).stdout.splitlines()
+    gpus = []
+    for line in result:
+      idx, total, free, used = map(int, line.split(', '))
+      usage = round(used / total * 100)
+      gpus.append((idx, free, usage))
+    selected = sorted(gpus, key=lambda x: x[1], reverse=True)[:n_gpus]
+    idx, free, usage = zip(*selected)
+    print(f'selected GPUs {idx} with usage: {usage}%')
+    devices = ','.join(map(str, idx))
+    os.environ['CUDA_VISIBLE_DEVICES'] = devices
+  except Exception as e:
+    print(f'coudnt set best gpus: {e}')
 
 
 if __name__ == '__main__':
